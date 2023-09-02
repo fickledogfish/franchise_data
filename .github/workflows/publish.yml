@@ -1,0 +1,98 @@
+name: Publish new version
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  test:
+    name: Run tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21.0'
+
+      - name: Debug info
+        run: |
+          go version
+
+      - name: Run tests
+        run: go test ./...
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: test
+
+    strategy:
+      matrix:
+        goos: [windows, linux, darwin]
+        goarch: [amd64]
+        include:
+          - goos: darwin
+            goarch: arm64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Zig
+        if: matrix.goos == 'windows'
+        uses: goto-bus-stop/setup-zig@v2
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21.0'
+
+      - name: Debug info
+        run: |
+          echo Running for ${{ matrix.goos }} ${{ matrix.goarch }}
+          command -v zig &> /dev/null && zig version | xargs printf 'zig version: %s\n' || echo 'No zig installation'
+          go version
+
+      - name: Build
+        if: matrix.goos != 'windows'
+        run: GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o franchises-${{ matrix.goos }}-${{ matrix.goarch }}
+
+      - name: Build for windows
+        if: matrix.goos == 'windows'
+        run: CGO_ENABLED=1 GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} CC="zig cc -target x86_64-windows" CXX="zig cc -target x86_64-windows" go build -o franchises-${{ matrix.goos }}-${{ matrix.goarch }}.exe
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: franchises-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: franchises-*
+          if-no-files-found: error
+
+  release:
+    name: Create release
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts
+
+      - name: Display structure of downloaded files
+        run: |
+          pwd
+          ls -R
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: artifacts/**/franchises-*
