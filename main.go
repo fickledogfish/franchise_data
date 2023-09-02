@@ -1,14 +1,13 @@
 package main
 
 import (
+	"log"
+
 	"example.com/franchises/cli"
-	"github.com/alecthomas/kong"
 )
 
 func main() {
-	var c cli.Cli
-	context := kong.Parse(&c)
-
-	err := context.Run(cli.NewContext())
-	context.FatalIfErrorf(err)
+	if err := cli.Run(); err != nil {
+		log.Fatal(err)
+	}
 }

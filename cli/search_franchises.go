@@ -16,7 +16,7 @@ type searchFranchises struct {
 	Language string `short:"l" help:"Preferred language for the results."`
 }
 
-func (self searchFranchises) Run(context *context) error {
+func (self searchFranchises) Run() error {
 	database, err := db.NewSqliteDb()
 	if err != nil {
 		return err

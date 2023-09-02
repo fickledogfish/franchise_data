@@ -13,7 +13,7 @@ type printLocations struct {
 	Origin  string `short:"f" help:"Only export data from the given origin."`
 }
 
-func (self printLocations) Run(context *context) error {
+func (self printLocations) Run() error {
 	writer, err := makeWriter(self.OutFile)
 	if err != nil {
 		return err

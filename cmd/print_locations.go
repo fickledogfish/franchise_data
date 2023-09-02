@@ -45,7 +45,7 @@ func (self printLocationsCmd) Run() error {
 }
 
 func dump(writer io.Writer, locations []domain.Location) error {
-	_, err := fmt.Fprintln(
+	if _, err := fmt.Fprintln(
 		writer,
 		"\"Index\","+
 			"\"Data Origin\","+
@@ -56,13 +56,12 @@ func dump(writer io.Writer, locations []domain.Location) error {
 			"\"State\","+
 			"\"Country\","+
 			"\"Postal Code\"",
-	)
-	if err != nil {
+	); err != nil {
 		return err
 	}
 
 	for index, location := range locations {
-		_, err := fmt.Fprintf(
+		if _, err := fmt.Fprintf(
 			writer,
 			"\"%d\",\"%s\",\"%d\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\"\n",
 			index,
@@ -74,8 +73,7 @@ func dump(writer io.Writer, locations []domain.Location) error {
 			location.Address.State,
 			location.Address.Country,
 			location.Address.PostalCode,
-		)
-		if err != nil {
+		); err != nil {
 			return err
 		}
 	}
