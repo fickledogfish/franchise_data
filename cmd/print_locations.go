@@ -2,22 +2,26 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 
 	"example.com/franchises/db"
 	"example.com/franchises/domain"
 )
 
 type printLocationsCmd struct {
+	writer io.Writer
 	loader db.LocationLoader
 
 	selectOrigin string
 }
 
 func NewPrintLocationsCmd(
+	writer io.Writer,
 	loader db.LocationLoader,
 	origin string,
 ) Command {
 	return printLocationsCmd{
+		writer:       writer,
 		loader:       loader,
 		selectOrigin: origin,
 	}
@@ -37,24 +41,29 @@ func (self printLocationsCmd) Run() error {
 		return err
 	}
 
-	return dump(locations)
+	return dump(self.writer, locations)
 }
 
-func dump(locations []domain.Location) error {
-	fmt.Println(
-		"\"Index\"," +
-			"\"Data Origin\"," +
-			"\"Id\"," +
-			"\"Name\"," +
-			"\"Street\"," +
-			"\"City\"," +
-			"\"State\"," +
-			"\"Country\"," +
+func dump(writer io.Writer, locations []domain.Location) error {
+	_, err := fmt.Fprintln(
+		writer,
+		"\"Index\","+
+			"\"Data Origin\","+
+			"\"Id\","+
+			"\"Name\","+
+			"\"Street\","+
+			"\"City\","+
+			"\"State\","+
+			"\"Country\","+
 			"\"Postal Code\"",
 	)
+	if err != nil {
+		return err
+	}
 
 	for index, location := range locations {
-		fmt.Printf(
+		_, err := fmt.Fprintf(
+			writer,
 			"\"%d\",\"%s\",\"%d\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\"\n",
 			index,
 			location.Origin,
@@ -66,6 +75,9 @@ func dump(locations []domain.Location) error {
 			location.Address.Country,
 			location.Address.PostalCode,
 		)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
