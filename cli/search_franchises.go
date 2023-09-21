@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"errors"
+
 	"example.com/franchises/cmd"
 	"example.com/franchises/db"
 	"example.com/franchises/domain"
@@ -17,6 +19,10 @@ type searchFranchises struct {
 }
 
 func (self searchFranchises) Run() error {
+	if self.Name == "" {
+		return errors.New("Cannot search for an empty string.")
+	}
+
 	database, err := db.NewSqliteDb()
 	if err != nil {
 		return err
@@ -34,23 +40,27 @@ func (self searchFranchises) Run() error {
 func (self searchFranchises) makeServices(
 	database cmd.LocationLoader,
 ) ([]cmd.LocationService, error) {
-	osmService, err := makeOsmService(database, self.Language)
-	if err != nil {
+	var services []cmd.LocationService
+
+	if err := self.makeOsmService(
+		&services,
+		database,
+		self.Language,
+	); err != nil {
 		return []cmd.LocationService{}, err
 	}
 
-	return []cmd.LocationService{
-		osmService,
-	}, nil
+	return services, nil
 }
 
-func makeOsmService(
+func (self searchFranchises) makeOsmService(
+	list *[]cmd.LocationService,
 	database cmd.LocationLoader,
 	preferredLanguage string,
-) (cmd.LocationService, error) {
+) error {
 	osmLocations, err := database.GetSavedLocationsFrom("osm")
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	idsToExclude := make([]domain.LocationId, len(osmLocations))
@@ -58,10 +68,12 @@ func makeOsmService(
 		idsToExclude[index] = location.Id
 	}
 
-	return locationservice.NewOsmLocationService(
+	*list = append(*list, locationservice.NewOsmLocationService(
 		osmUserAgent,
 		preferredLanguage,
 		[]string{"br"},
 		idsToExclude,
-	), nil
+	))
+
+	return nil
 }
