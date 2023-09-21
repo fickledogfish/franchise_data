@@ -4,22 +4,21 @@ import (
 	"fmt"
 	"io"
 
-	"example.com/franchises/db"
 	"example.com/franchises/domain"
 )
 
 type printLocationsCmd struct {
 	writer io.Writer
-	loader db.LocationLoader
+	loader LocationLoader
 
 	selectOrigin string
 }
 
 func NewPrintLocationsCmd(
 	writer io.Writer,
-	loader db.LocationLoader,
+	loader LocationLoader,
 	origin string,
-) Command {
+) printLocationsCmd {
 	return printLocationsCmd{
 		writer:       writer,
 		loader:       loader,
@@ -41,10 +40,10 @@ func (self printLocationsCmd) Run() error {
 		return err
 	}
 
-	return dump(self.writer, locations)
+	return writeCsv(self.writer, locations)
 }
 
-func dump(writer io.Writer, locations []domain.Location) error {
+func writeCsv(writer io.Writer, locations []domain.Location) error {
 	if _, err := fmt.Fprintln(
 		writer,
 		"\"Index\","+

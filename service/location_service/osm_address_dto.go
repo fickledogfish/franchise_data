@@ -1,4 +1,4 @@
-package service
+package locationservice
 
 import "example.com/franchises/domain"
 
@@ -11,12 +11,12 @@ type osmAddressDto struct {
 	Country  string `json:"country"`
 }
 
-func (dto osmAddressDto) asAddress() domain.Address {
+func (self osmAddressDto) asAddress() domain.Address {
 	return domain.NewAddress(
-		dto.Road,
-		dto.City,
-		dto.State,
-		dto.Country,
-		dto.PostCode,
+		self.Road,
+		self.City,
+		self.State,
+		self.Country,
+		self.PostCode,
 	)
 }

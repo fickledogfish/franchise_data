@@ -1,4 +1,4 @@
-package service
+package locationservice
 
 import "example.com/franchises/domain"
 
@@ -9,11 +9,11 @@ type osmLocationDto struct {
 	Address     osmAddressDto `json:"address"`
 }
 
-func (dto osmLocationDto) asLocation() domain.Location {
+func (self osmLocationDto) asLocation() domain.Location {
 	return domain.NewLocation(
-		dto.PlaceId,
+		self.PlaceId,
 		"osm",
-		dto.Name,
-		dto.Address.asAddress(),
+		self.Name,
+		self.Address.asAddress(),
 	)
 }

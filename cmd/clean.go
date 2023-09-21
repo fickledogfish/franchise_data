@@ -11,7 +11,7 @@ import (
 type cleanCmd struct {
 }
 
-func NewCleanCmd() Command {
+func NewCleanCmd() cleanCmd {
 	return cleanCmd{}
 }
 

@@ -4,46 +4,47 @@ import (
 	"fmt"
 	"sync"
 
-	"example.com/franchises/db"
 	"example.com/franchises/domain"
-	"example.com/franchises/service"
 )
 
 type searchResult struct {
-	query   string
-	page    domain.Paginated[domain.Location]
-	service service.LocationService
+	query string
+	page  domain.Paginated[domain.Location]
 }
 
 type searchLocationCmd struct {
 	query       string
-	services    []service.LocationService
+	db          LocationSaver
+	services    []LocationService
 	resultsChan chan searchResult
 	errorsChan  chan error
 }
 
 func NewSearchLocationCmd(
 	query string,
-	db db.LocationSaver,
-	services []service.LocationService,
-) Command {
+	db LocationSaver,
+	services []LocationService,
+) searchLocationCmd {
 	chanBufferSize := len(services)
 
 	resultsChan := make(chan searchResult, chanBufferSize)
 	errorsChan := make(chan error, chanBufferSize)
 
-	go processResults(db, resultsChan)
-	go processErrors(errorsChan)
-
 	return searchLocationCmd{
-		query:       query,
-		services:    services,
+		query: query,
+
+		db:       db,
+		services: services,
+
 		resultsChan: resultsChan,
 		errorsChan:  errorsChan,
 	}
 }
 
 func (self searchLocationCmd) Run() error {
+	go processResults(self.db, self.resultsChan)
+	go processErrors(self.errorsChan)
+
 	var waitGroup sync.WaitGroup
 	waitGroup.Add(len(self.services))
 
@@ -67,33 +68,31 @@ func (self searchLocationCmd) Run() error {
 func runSearch(
 	resultsChan chan<- searchResult,
 	errorsChan chan<- error,
-	s service.LocationService,
+	service LocationService,
 	query string,
 	waitGroup *sync.WaitGroup,
 ) {
-	result, err := s.SearchLocation(query)
+	result, err := service.SearchLocation(query)
 	if err != nil {
 		errorsChan <- err
-		close(errorsChan)
-		close(resultsChan)
-
+		waitGroup.Done()
 		return
 	}
 
 	resultsChan <- searchResult{
-		query:   query,
-		page:    result,
-		service: s,
+		query: query,
+		page:  result,
 	}
 	if !result.IsLastPage {
-		go runSearch(resultsChan, errorsChan, s, query, waitGroup)
+		service.SleepBetweenRequests()
+		go runSearch(resultsChan, errorsChan, service, query, waitGroup)
 	} else {
 		waitGroup.Done()
 	}
 }
 
 func processResults(
-	database db.LocationSaver,
+	database LocationSaver,
 	resultsChan <-chan searchResult,
 ) {
 	for result := range resultsChan {

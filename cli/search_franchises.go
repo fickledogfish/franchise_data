@@ -4,7 +4,7 @@ import (
 	"example.com/franchises/cmd"
 	"example.com/franchises/db"
 	"example.com/franchises/domain"
-	"example.com/franchises/service"
+	locationservice "example.com/franchises/service/location_service"
 )
 
 const (
@@ -32,22 +32,22 @@ func (self searchFranchises) Run() error {
 }
 
 func (self searchFranchises) makeServices(
-	database db.LocationLoader,
-) ([]service.LocationService, error) {
+	database cmd.LocationLoader,
+) ([]cmd.LocationService, error) {
 	osmService, err := makeOsmService(database, self.Language)
 	if err != nil {
-		return []service.LocationService{}, err
+		return []cmd.LocationService{}, err
 	}
 
-	return []service.LocationService{
+	return []cmd.LocationService{
 		osmService,
 	}, nil
 }
 
 func makeOsmService(
-	database db.LocationLoader,
+	database cmd.LocationLoader,
 	preferredLanguage string,
-) (service.LocationService, error) {
+) (cmd.LocationService, error) {
 	osmLocations, err := database.GetSavedLocationsFrom("osm")
 	if err != nil {
 		return nil, err
@@ -58,7 +58,7 @@ func makeOsmService(
 		idsToExclude[index] = location.Id
 	}
 
-	return service.NewOsmLocationService(
+	return locationservice.NewOsmLocationService(
 		osmUserAgent,
 		preferredLanguage,
 		[]string{"br"},

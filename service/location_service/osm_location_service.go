@@ -1,4 +1,4 @@
-package service
+package locationservice
 
 import (
 	"encoding/json"
@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"example.com/franchises/domain"
+	httpheaders "example.com/franchises/service/http_headers"
 )
 
 const (
@@ -41,7 +42,7 @@ func NewOsmLocationService(
 	preferredLanguage string,
 	countryCodes []string,
 	excludingIds []domain.LocationId,
-) LocationService {
+) *osmService {
 	return &osmService{
 		userAgent:         userAgent,
 		preferredLanguage: preferredLanguage,
@@ -50,6 +51,17 @@ func NewOsmLocationService(
 		countryCodes: countryCodes,
 		excludingIds: excludingIds,
 	}
+}
+
+func (self *osmService) SleepBetweenRequests() {
+	// Force the caller to wait a bit to avoid the trigger-happy pagination
+	// firing too quickly.
+	//
+	// This is part of Nominatim's usage policy:
+	//
+	//     https://operations.osmfoundation.org/policies/nominatim/
+
+	time.Sleep(1 * time.Second)
 }
 
 func (self *osmService) SearchLocation(
@@ -86,14 +98,6 @@ func (self *osmService) SearchLocation(
 		return domain.NewEmptyPage[domain.Location](), err
 	}
 
-	// Force the caller to wait for a response to avoid the trigger-happy
-	// pagination firing too quickly.
-	//
-	// This is part of Nominatim's usage policy:
-	//
-	//     https://operations.osmfoundation.org/policies/nominatim/
-	time.Sleep(1 * time.Second)
-
 	return self.parseSearchResponse(response)
 }
 
@@ -103,8 +107,8 @@ func (self osmService) buildBaseRequest() (request *http.Request, err error) {
 		return
 	}
 
-	request.Header.Set(userAgentHeader, self.userAgent)
-	request.Header.Set(acceptLanguageHeader, self.preferredLanguage+", *;q=0.7")
+	request.Header.Set(httpheaders.UserAgentHeader, self.userAgent)
+	request.Header.Set(httpheaders.AcceptLanguageHeader, self.preferredLanguage+", *;q=0.7")
 
 	return
 }
