@@ -13,9 +13,11 @@ type searchResult struct {
 }
 
 type searchLocationCmd struct {
-	query       string
-	db          LocationSaver
-	services    []LocationService
+	query string
+
+	db       LocationSaver
+	services []LocationService
+
 	resultsChan chan searchResult
 	errorsChan  chan error
 }
@@ -42,11 +44,12 @@ func NewSearchLocationCmd(
 }
 
 func (self searchLocationCmd) Run() error {
-	go processResults(self.db, self.resultsChan)
-	go processErrors(self.errorsChan)
+	var processWaitGroup sync.WaitGroup
+	go processResults(self.db, self.resultsChan, &processWaitGroup)
+	go processErrors(self.errorsChan, &processWaitGroup)
 
-	var waitGroup sync.WaitGroup
-	waitGroup.Add(len(self.services))
+	var servicesWaitGroup sync.WaitGroup
+	servicesWaitGroup.Add(len(self.services))
 
 	for _, service := range self.services {
 		go runSearch(
@@ -54,13 +57,15 @@ func (self searchLocationCmd) Run() error {
 			self.errorsChan,
 			service,
 			self.query,
-			&waitGroup,
+			&servicesWaitGroup,
 		)
 	}
 
-	waitGroup.Wait()
+	servicesWaitGroup.Wait()
+
 	close(self.resultsChan)
 	close(self.errorsChan)
+	processWaitGroup.Wait()
 
 	return nil
 }
@@ -94,7 +99,11 @@ func runSearch(
 func processResults(
 	database LocationSaver,
 	resultsChan <-chan searchResult,
+	waitGroup *sync.WaitGroup,
 ) {
+	waitGroup.Add(1)
+	defer waitGroup.Done()
+
 	for result := range resultsChan {
 		fmt.Printf("Got page with %d elements\n", result.page.Len())
 
@@ -104,7 +113,13 @@ func processResults(
 	}
 }
 
-func processErrors(errorsChan <-chan error) {
+func processErrors(
+	errorsChan <-chan error,
+	waitGroup *sync.WaitGroup,
+) {
+	waitGroup.Add(1)
+	defer waitGroup.Done()
+
 	for error := range errorsChan {
 		fmt.Println(error)
 	}
