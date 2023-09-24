@@ -1,26 +1,25 @@
 package cli
 
 import (
-	"errors"
-
 	"example.com/franchises/cmd"
 	"example.com/franchises/db"
 	"example.com/franchises/domain"
-	locationservice "example.com/franchises/service/location_service"
-)
-
-const (
-	osmUserAgent = "Learning go apis"
+	"example.com/franchises/log"
+	osmService "example.com/franchises/service/osm_location_service"
 )
 
 type searchFranchises struct {
 	Name     string `arg:"" help:"Name to search for."`
 	Language string `short:"l" help:"Preferred language for the results."`
+
+	OsmOptions struct {
+		UserAgent string `help:"User agent to send on requests to the Nominatim API." default:"Franchise store locator"`
+	} `embed:"" prefix:"osm-"`
 }
 
 func (self searchFranchises) Run() error {
 	if self.Name == "" {
-		return errors.New("Cannot search for an empty string.")
+		return SearchFranchisesEmptySearchError()
 	}
 
 	database, err := db.NewSqliteDb()
@@ -58,18 +57,24 @@ func (self searchFranchises) makeOsmService(
 	database cmd.LocationLoader,
 	preferredLanguage string,
 ) error {
-	osmLocations, err := database.GetSavedLocationsFrom("osm")
+	osmLocations, err := database.GetSavedLocationsFrom(osmService.OsmDataOrigin)
 	if err != nil {
 		return err
 	}
+
+	log.Info(
+		"Preloaded %d location ID(s) for the %q source",
+		len(osmLocations),
+		osmService.OsmDataOrigin,
+	)
 
 	idsToExclude := make([]domain.LocationId, len(osmLocations))
 	for index, location := range osmLocations {
 		idsToExclude[index] = location.Id
 	}
 
-	*list = append(*list, locationservice.NewOsmLocationService(
-		osmUserAgent,
+	*list = append(*list, osmService.NewOsmLocationService(
+		self.OsmOptions.UserAgent,
 		preferredLanguage,
 		[]string{"br"},
 		idsToExclude,

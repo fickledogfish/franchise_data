@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"example.com/franchises/db"
+	"example.com/franchises/log"
 )
 
 type cleanCmd struct {
@@ -21,6 +22,7 @@ func (self cleanCmd) Run() error {
 	}
 
 	for _, file := range generatedFiles {
+		log.Debug("Cleaning %s", file)
 		err := os.Remove(file)
 		if !errors.Is(err, fs.ErrNotExist) {
 			return err

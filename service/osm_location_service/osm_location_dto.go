@@ -12,7 +12,7 @@ type osmLocationDto struct {
 func (self osmLocationDto) asLocation() domain.Location {
 	return domain.NewLocation(
 		self.PlaceId,
-		"osm",
+		OsmDataOrigin,
 		self.Name,
 		self.Address.asAddress(),
 	)

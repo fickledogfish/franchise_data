@@ -2,20 +2,20 @@ package locationservice
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
 	"example.com/franchises/domain"
+	"example.com/franchises/log"
 	httpheaders "example.com/franchises/service/http_headers"
 )
 
 const (
 	osmBaseUrl = "https://nominatim.openstreetmap.org/search?"
 
-	osmDataOrigin = "osm"
+	OsmDataOrigin = "osm"
 
 	osmSearchQueryParamName         = "q"
 	osmAddressDetailsQueryParamName = "addressdetails"
@@ -91,7 +91,7 @@ func (self *osmService) SearchLocation(
 
 	req.URL.RawQuery = urlQueryParams.Encode()
 
-	fmt.Println(req.URL.String())
+	log.Debug("%s", req.URL.String())
 
 	response, err := self.client.Do(req)
 	if err != nil {

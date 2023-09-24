@@ -1,10 +1,10 @@
 package cmd
 
 import (
-	"fmt"
 	"sync"
 
 	"example.com/franchises/domain"
+	"example.com/franchises/log"
 )
 
 type searchResult struct {
@@ -105,7 +105,7 @@ func processResults(
 	defer waitGroup.Done()
 
 	for result := range resultsChan {
-		fmt.Printf("Got page with %d elements\n", result.page.Len())
+		log.Info("Got page with %d elements\n", result.page.Len())
 
 		for _, location := range result.page.Results {
 			database.SaveLocation(location)
@@ -121,6 +121,6 @@ func processErrors(
 	defer waitGroup.Done()
 
 	for error := range errorsChan {
-		fmt.Println(error)
+		log.Error("%s", error)
 	}
 }
