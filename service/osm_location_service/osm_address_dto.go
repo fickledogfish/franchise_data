@@ -1,4 +1,4 @@
-package locationservice
+package osmlocationservice
 
 import "example.com/franchises/domain"
 
