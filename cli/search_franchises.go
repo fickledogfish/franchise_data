@@ -6,11 +6,13 @@ import (
 	"example.com/franchises/domain"
 	"example.com/franchises/log"
 	osmService "example.com/franchises/service/osm_location_service"
+	viacep "example.com/franchises/service/viacep_postal_code_info_service"
 )
 
 type searchFranchises struct {
-	Name     string `arg:"" help:"Name to search for."`
-	Language string `short:"l" help:"Preferred language for the results."`
+	Name                    string `arg:"" help:"Name to search for."`
+	Language                string `short:"l" help:"Preferred language for the results."`
+	AttemptToRecoverAddress bool   `short:"r" name:"recover" help:"Attempt to use ViaCEP to recover missing information."`
 
 	OsmOptions struct {
 		UserAgent string `help:"User agent to send on requests to the Nominatim API." default:"Franchise store locator"`
@@ -32,7 +34,17 @@ func (self searchFranchises) Run() error {
 		return err
 	}
 
-	cmd := cmd.NewSearchLocationCmd(self.Name, database, services)
+	addressRecoverer, err := self.makeAddressRecoverer()
+	if err != nil {
+		return err
+	}
+
+	cmd := cmd.NewSearchLocationCmd(
+		self.Name,
+		database,
+		services,
+		addressRecoverer,
+	)
 	return cmd.Run()
 }
 
@@ -81,4 +93,12 @@ func (self searchFranchises) makeOsmService(
 	))
 
 	return nil
+}
+
+func (self searchFranchises) makeAddressRecoverer() (cmd.AddressRecoverer, error) {
+	if !self.AttemptToRecoverAddress {
+		return nil, nil
+	}
+
+	return viacep.NewViaCepAddressService(), nil
 }

@@ -15,8 +15,9 @@ type searchResult struct {
 type searchLocationCmd struct {
 	query string
 
-	db       LocationSaver
-	services []LocationService
+	db               LocationSaver
+	services         []LocationService
+	addressRecoverer AddressRecoverer
 
 	resultsChan chan searchResult
 	errorsChan  chan error
@@ -26,6 +27,7 @@ func NewSearchLocationCmd(
 	query string,
 	db LocationSaver,
 	services []LocationService,
+	addressRecoverer AddressRecoverer,
 ) searchLocationCmd {
 	chanBufferSize := len(services)
 
@@ -35,8 +37,9 @@ func NewSearchLocationCmd(
 	return searchLocationCmd{
 		query: query,
 
-		db:       db,
-		services: services,
+		db:               db,
+		services:         services,
+		addressRecoverer: addressRecoverer,
 
 		resultsChan: resultsChan,
 		errorsChan:  errorsChan,
@@ -45,7 +48,7 @@ func NewSearchLocationCmd(
 
 func (self searchLocationCmd) Run() error {
 	var processWaitGroup sync.WaitGroup
-	go processResults(self.db, self.resultsChan, &processWaitGroup)
+	go processResults(self.db, self.addressRecoverer, self.resultsChan, self.errorsChan, &processWaitGroup)
 	go processErrors(self.errorsChan, &processWaitGroup)
 
 	var servicesWaitGroup sync.WaitGroup
@@ -98,14 +101,18 @@ func runSearch(
 
 func processResults(
 	database LocationSaver,
+	addressRecoverer AddressRecoverer,
 	resultsChan <-chan searchResult,
+	errorsChan chan<- error,
 	waitGroup *sync.WaitGroup,
 ) {
 	waitGroup.Add(1)
 	defer waitGroup.Done()
 
 	for result := range resultsChan {
-		log.Info("Got page with %d elements\n", result.page.Len())
+		log.Info("Got page with %d elements", result.page.Len())
+
+		recoverAddressesInResult(addressRecoverer, &result, errorsChan)
 
 		for _, location := range result.page.Results {
 			database.SaveLocation(location)
@@ -122,5 +129,34 @@ func processErrors(
 
 	for error := range errorsChan {
 		log.Error("%s", error)
+	}
+}
+
+func recoverAddressesInResult(
+	addressRecoverer AddressRecoverer,
+	result *searchResult,
+	errorsChan chan<- error,
+) {
+	if addressRecoverer == nil {
+		return // The user didn't ask to recover, so don't.
+	}
+
+	for index, location := range result.page.Results {
+		if location.Address.PostalCode == "" {
+			log.Info("Found location with missing postal code, so it cannot be recovered: %#v", location)
+			continue // Not much else we can do here
+		}
+
+		if location.Address.Street == "" || location.Address.City == "" || location.Address.State == "" {
+			newAddress, err := addressRecoverer.RecoverInfoFromPostalCode(location.Address.PostalCode)
+			if err != nil {
+				errorsChan <- err
+				continue
+			}
+
+			log.Debug("Recovered info for %s", location.Address.PostalCode)
+
+			result.page.Results[index].Address = newAddress
+		}
 	}
 }

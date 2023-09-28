@@ -1,6 +1,10 @@
 package osmlocationservice
 
-import "example.com/franchises/domain"
+import (
+	"strings"
+
+	"example.com/franchises/domain"
+)
 
 type osmAddressDto struct {
 	PostCode string `json:"postcode"`
@@ -13,10 +17,10 @@ type osmAddressDto struct {
 
 func (self osmAddressDto) asAddress() domain.Address {
 	return domain.NewAddress(
-		self.Road,
-		self.City,
-		self.State,
-		self.Country,
-		self.PostCode,
+		strings.TrimSpace(self.Road),
+		strings.TrimSpace(self.City),
+		strings.TrimSpace(self.State),
+		strings.TrimSpace(self.Country),
+		strings.TrimSpace(self.PostCode),
 	)
 }

@@ -1,6 +1,10 @@
 package osmlocationservice
 
-import "example.com/franchises/domain"
+import (
+	"strings"
+
+	"example.com/franchises/domain"
+)
 
 type osmLocationDto struct {
 	PlaceId     uint64        `json:"place_id"`
@@ -13,7 +17,7 @@ func (self osmLocationDto) asLocation() domain.Location {
 	return domain.NewLocation(
 		self.PlaceId,
 		OsmDataOrigin,
-		self.Name,
+		strings.TrimSpace(self.Name),
 		self.Address.asAddress(),
 	)
 }
